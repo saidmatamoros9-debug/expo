@@ -1,28 +1,294 @@
----
-title: Create a project
-description: Learn how to create a new Expo project.
-hideTOC: true
----
+import React, { useEffect, useState } from "react";
+import "./SplashScreen.css";
 
-import { Terminal } from '~/ui/components/Snippet';
+export default function SplashScreen({ onFinish }) {
+  const [loadingText, setLoadingText] = useState("Inicializando sistema...");
 
-Expo is a React Native framework that makes developing Android and iOS apps easier. Our framework provides file-based routing, a standard library of native modules, and much more. Expo is open source with an active community on [GitHub](https://github.com/expo/expo) and [Discord](https://chat.expo.dev).
+  useEffect(() => {
+    // 🔊 Sonido de inicio
+    const audio = new Audio("/jarvis-startup.mp3");
+    audio.volume = 0.7;
+    audio.play();
 
-We also make [Expo Application Services (EAS)](https://expo.dev/eas), a set of services that complement the Expo framework in each step of the development process.
+    const steps = [
+      "Cargando módulos...",
+      "Verificando integridad...",
+      "Conectando a J.A.R.V.I.S...",
+      "Sistema operativo online...",
+      "Listo."
+    ];
 
-## System requirements
+    let index = 0;
+    const interval = setInterval(() => {
+      setLoadingText(steps[index]);
+      index++;
 
-- [Node.js (LTS)](https://nodejs.org/en/).
-- macOS, Windows (Powershell and [WSL 2](https://expo.fyi/wsl)), and Linux are supported.
+      if (index === steps.length) {
+        clearInterval(interval);
+        setTimeout(onFinish, 800);
+      }
+    }, 900);
 
-We recommend starting with the default project created by `create-expo-app`. The default project includes example code to help you get started.
+    return () => clearInterval(interval);
+  }, [onFinish]);
 
-To create a new project, run the following command:
+  return (
+    <div className="splash-container">
+      <h1 className="jarvis-title">JARVIS</h1>
+      <p className="subtitle">ASISTENTE VIRTUAL</p>
 
-<Terminal cmd={['$ npx create-expo-app@latest --template default@sdk-56']} />
+      <div className="loader"></div>
 
-> **Note:** During the SDK 56 transition period, `create-expo-app@latest` without the `--template` flag creates an SDK 55 project. If you plan to use Expo Go on a physical device, use an SDK 55 project. Otherwise, use `--template default@sdk-56` to create an SDK 56 project. You can also choose a different template by adding the [`--template` option](/more/create-expo/#--template).
+      <p className="loading-text">{loadingText}</p>
+    </div>
+  );
+}
+.splash-container {
+  height: 100vh;
+  width: 100%;
+  background: url("/jarvis-fondo.png") no-repeat center center fixed;
+  background-size: cover;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  color: #38bdf8;
+  text-shadow: 0 0 15px #38bdf8;
+  animation: fadeIn 1.5s ease-out;
+}
 
-## Next step
+.jarvis-title {
+  font-size: 4rem;
+  letter-spacing: 8px;
+  margin: 0;
+  animation: glow 2s infinite alternate;
+}
 
-You have a project. Now it's time to set up your development environment so that you can start developing.
+.subtitle {
+  margin-top: -10px;
+  font-size: 1.2rem;
+  opacity: 0.8;
+}
+
+.loader {
+  margin-top: 40px;
+  width: 60px;
+  height: 60px;
+  border: 4px solid rgba(56, 189, 248, 0.3);
+  border-top-color: #38bdf8;
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+}
+
+.loading-text {
+  margin-top: 25px;
+  font-size: 1.1rem;
+  opacity: 0.9;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@keyframes glow {
+  from {
+    text-shadow: 0 0 10px #38bdf8;
+  }
+  to {
+    text-shadow: 0 0 25px #38bdf8;
+  }
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+import React, { useState } from "react";
+import SplashScreen from "./SplashScreen";
+import "./App.css";
+
+export default function App() {
+  const [showSplash, setShowSplash] = useState(true);
+  const [message, setMessage] = useState("");
+  const [chat, setChat] = useState([]);
+
+  const finishSplash = () => setShowSplash(false);
+
+  const speak = (text) => {
+    const speech = new SpeechSynthesisUtterance(text);
+    speech.lang = "es-ES";
+    window.speechSynthesis.speak(speech);
+  };
+
+  const sendMessage = () => {
+    if (!message) return;
+
+    const userMessage = { sender: "Usuario", text: message };
+    setChat((prev) => [...prev, userMessage]);
+
+    let responseText = "No entendí tu mensaje";
+
+    if (message.toLowerCase().includes("hola")) {
+      responseText = "Hola señor";
+    }
+
+    if (message.toLowerCase().includes("hora")) {
+      responseText = `La hora actual es ${new Date().toLocaleTimeString()}`;
+    }
+
+    const botMessage = { sender: "Jarvis", text: responseText };
+    setChat((prev) => [...prev, botMessage]);
+
+    // 🔊 Sonido al responder
+    const beep = new Audio("/jarvis-beep.mp3");
+    beep.volume = 0.5;
+    beep.play();
+
+    // 🔊 Voz de Jarvis
+    speak(responseText);
+
+    setMessage("");
+  };
+
+  const startVoiceRecognition = () => {
+    const recognition = new window.webkitSpeechRecognition();
+    recognition.lang = "es-ES";
+
+    recognition.onresult = (event) => {
+      const voiceText = event.results[0][0].transcript;
+      setMessage(voiceText);
+    };
+
+    recognition.start();
+  };
+
+  if (showSplash) return <SplashScreen onFinish={finishSplash} />;
+
+  return (
+    <div className="container">
+      <h1>Jarvis</h1>
+
+      <div className="chat-box">
+        {chat.map((msg, index) => (
+          <div key={index} className="message">
+            <strong>{msg.sender}: </strong>
+            {msg.text}
+          </div>
+        ))}
+      </div>
+
+      <div className="input-area">
+        <input
+          type="text"
+          placeholder="Escribe un mensaje..."
+          value={message}
+          onChange={(e) => setMessage(e.target.value)}
+        />
+
+        <button onClick={sendMessage}>Enviar</button>
+        <button onClick={startVoiceRecognition}>🎤</button>
+      </div>
+    </div>
+  );
+}
+body {
+  margin: 0;
+  padding: 0;
+  background: url("/jarvis-fondo.png") no-repeat center center fixed;
+  background-size: cover;
+  font-family: Arial, sans-serif;
+  color: #fff;
+}
+
+body::before {
+  content: "";
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(0, 10, 25, 0.6);
+  backdrop-filter: blur(3px);
+  z-index: -1;
+}
+
+.container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 20px;
+}
+
+h1 {
+  margin-top: 20px;
+  color: #38bdf8;
+  font-size: 2.5rem;
+  text-shadow: 0 0 10px #38bdf8;
+}
+
+.chat-box {
+  width: 90%;
+  max-width: 600px;
+  height: 60vh;
+  background: rgba(15, 23, 42, 0.6);
+  border: 1px solid rgba(56, 189, 248, 0.3);
+  border-radius: 10px;
+  padding: 15px;
+  overflow-y: auto;
+  margin-bottom: 20px;
+  box-shadow: 0 0 15px rgba(56, 189, 248, 0.3);
+}
+
+.message {
+  margin-bottom: 12px;
+  padding: 10px;
+  background: rgba(51, 65, 85, 0.6);
+  border-radius: 6px;
+  border-left: 3px solid #38bdf8;
+}
+
+.message strong {
+  color: #38bdf8;
+}
+
+.input-area {
+  display: flex;
+  gap: 10px;
+  width: 90%;
+  max-width: 600px;
+}
+
+input {
+  flex: 1;
+  padding: 12px;
+  border-radius: 6px;
+  border: none;
+  outline: none;
+  font-size: 1rem;
+  background: rgba(255, 255, 255, 0.1);
+  color: #fff;
+}
+
+button {
+  padding: 12px 18px;
+  border: none;
+  border-radius: 6px;
+  background: #38bdf8;
+  color: #0f172a;
+  font-weight: bold;
+  cursor: pointer;
+  transition: 0.2s;
+  box-shadow: 0 0 10px #38bdf8;
+}
+
+button:hover {
+  background: #0ea5e9;
+  box-shadow: 0 0 15px #0ea5e9;
+}
+
